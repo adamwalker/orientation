@@ -1,6 +1,13 @@
-module Graphics.Orientation where
+module Graphics.Orientation (
+    parseObj,
+    drawOrientation
+    ) where
 
 import Control.Monad
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Maybe
+import Data.List.Split
 import Foreign.Storable (sizeOf)
 import Control.Monad.Trans.Either
 
@@ -13,6 +20,33 @@ import Linear as L
 import Pipes
 
 import Paths_orientation
+
+parseObj :: [String] -> ([GLfloat], [GLfloat])
+parseObj lines = (concat verts, concat norms)
+    where
+    (verts, norms) = unzip faces
+    vertices  = toMap $ map parse3Coord $ map (drop 2) $ filter (command "v")  lines
+    texCoords = toMap $ map parse2Coord $ map (drop 3) $ filter (command "vt") lines
+    normals   = toMap $ map parse3Coord $ map (drop 3) $ filter (command "vn") lines
+    toMap     = Map.fromList . zip [1..]
+    parse3Coord str = [read x :: GLfloat, read y, read z]
+        where
+        [x, y, z] = splitOn " " str
+    parse2Coord str = [read x :: GLfloat, read y]
+        where
+        [x, y] = splitOn " " str
+    faces     = map doFaces $ map (drop 2) $ filter (command "f")  lines
+    command c line = take (length c + 1) line == (c ++ " ")
+    doFaces line = (vv1 ++ vv2 ++ vv3, n1 ++ n2 ++ n3)
+        where
+        [v1, v2, v3] = splitOn " " line
+        (vv1, n1) = doVertex v1
+        (vv2, n2) = doVertex v2
+        (vv3, n3) = doVertex v3
+        doVertex str = (fromJust $ Map.lookup (read c1) vertices, fromJust $ Map.lookup (read c3) normals)
+            where
+            [c1, c2, c3] = splitOn "/" str
+
 
 drawOrientation :: [GLfloat] -> [GLfloat] -> IO (Either String (Consumer (Quaternion GLfloat) IO ()))
 drawOrientation verts norms = runEitherT $ do
