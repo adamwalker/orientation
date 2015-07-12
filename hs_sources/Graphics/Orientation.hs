@@ -1,5 +1,6 @@
 module Graphics.Orientation (
     parseObj,
+    setupGLFW,
     drawOrientation
     ) where
 
@@ -47,16 +48,16 @@ parseObj lines = (concat verts, concat norms)
             where
             [c1, c2, c3] = splitOn "/" str
 
+-- | Utility function to setup GLFW for graph drawing. Returns True on success.
+setupGLFW :: IO Bool
+setupGLFW = do
+    setErrorCallback $ Just $ \error msg -> do
+        print error
+        putStrLn msg
+    G.init
 
 drawOrientation :: [GLfloat] -> [GLfloat] -> IO (Either String (Consumer (Quaternion GLfloat) IO ()))
 drawOrientation verts norms = runEitherT $ do
-    lift $ setErrorCallback $ Just $ \error msg -> do
-        print error
-        putStrLn msg
-
-    res <- lift $ G.init
-    unless res (left "error initializing glfw")
-
     res' <- lift $ createWindow 1024 768 "" Nothing Nothing
     win <- maybe (left "error creating window") return res'
 
